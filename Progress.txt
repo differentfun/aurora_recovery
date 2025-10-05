@@ -1,0 +1,45 @@
+Aurora Recover — Project Summary
+===============================
+
+Purpose
+-------
+Aurora Recover is an experimental data recovery utility that combines fast filesystem scans with deep signature-based carving. The goal is to offer an approachable desktop tool (Tkinter GUI) that can inspect mounted directories, trash bins, raw disk images, and block devices to identify potentially recoverable data.
+
+Current Capabilities
+--------------------
+- Modular Python package (`data/`) with services for configuration, models, utilities, filesystem scanning, recovery helpers, and GUI control.
+- Hierarchical “unit picker” that enumerates mounted paths, recycle bins, and physical devices/partitions (using `/sys/block` on Linux).
+- Quick scan traverses directories; trash scan indexes recycle bins; deep scan performs chunked signature carving and filesystem-aware enumeration (NTFS, FAT/FAT32, EXT2/3/4, simplified HFS/HFS+).
+- Signature filters let the user choose which file types to carve; filesystem selector exposes Auto, NTFS, FAT variants, EXT variants, and HFS/HFS+ for targeted metadata extraction.
+- Background tasks run in threads with live progress updates, detailed status messages, privilege-aware cancellation, and a Stop button that safely interrupts work.
+- Recovery workflows copy original or carved data to user-selected destinations, with automatic name sanitisation, collision handling, and filesystem-specific restore delegates (NTFS, FAT, EXT, HFS).
+- Launcher script (`launch.sh`) now escalates seamlessly via `pkexec`, preserving GUI environment variables; `--check` remains headless-friendly.
+
+Implementation Notes
+--------------------
+- Deep scans return a `DeepScanSummary` containing both carved matches and filesystem entries. Filesystem adapters currently include NTFS (MFT walk), FAT/FAT32 (cluster chains), EXT2/3/4 (indirect blocks + extent trees), and a simplified HFS/HFS+ reader.
+- Cancellation propagates through quick/trash/deep scans via `threading.Event` objects. UI reacts to `task_started` / `task_finished` events to disable or re-enable controls.
+- Signature carving is streaming-based to keep memory usage bounded, and preview snippets adjust to actual segment size.
+- Extensive unit coverage exercises scanner flows, filesystem analyzers, recovery handlers, and helper image builders to guard regression risk.
+
+Next Steps
+----------
+- Generalise HFS handling to parse real-world HFS+ catalog B-trees and investigate APFS snapshot support.
+- Surface filesystem-specific metadata (timestamps, parent paths, attributes) within the UI for NTFS, EXT, FAT, and HFS results.
+- Add persistence (saving scan sessions), exportable reports, and richer filtering/sorting in the results tables.
+- Integrate verify/restore options for carved segments (hashing, preview panes) and optional imaging (creating raw `.dd` snapshots).
+- Investigate performance tuning for large EXT/HFS catalog walks (block caching, streaming I/O boundary checks).
+
+Testing & Verification
+----------------------
+Latest verification run:
+- `python3 -m unittest discover -s data/tests`
+- `python3 -m compileall .`
+- `./launch.sh --check`
+
+Update (latest):
+- Added FAT/FAT32, EXT2/3/4, and simplified HFS/HFS+ analyzers with recovery delegates and scanner integrations.
+- Expanded filesystem picker in the GUI and wired recovery manager aliases for FAT/EXT/HFS families.
+- Introduced pkexec-based privilege escalation in the launcher while preserving `DISPLAY`/`XAUTHORITY` for GUI access.
+- Augmented unit test suite with synthetic disk image builders (FAT, EXT, HFS) and end-to-end recovery assertions.
+- Polished HFS recovery loops to respect declared block counts during extraction.
